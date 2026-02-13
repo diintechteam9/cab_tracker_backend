@@ -5,7 +5,13 @@ const sendWhatsAppMessage = require("../services/whatsapp.service");
 
 exports.createTracking = async (req, res) => {
   try {
-    const { name, mobile, sourceLat, sourceLng, destLat, destLng } = req.body;
+    const {
+      name, mobile,
+      sourceLat, sourceLng, sourceAddress,
+      destLat, destLng, destAddress,
+      driverName, driverMobile, vehicleNumber
+    } = req.body;
+
     const token = uuid();
 
     const user = await User.create({
@@ -13,17 +19,38 @@ exports.createTracking = async (req, res) => {
       mobile,
       token,
       source: { lat: sourceLat, lng: sourceLng },
+      sourceAddress,
       destination: { lat: destLat, lng: destLng },
+      destAddress,
+      driverName,
+      driverMobile,
+      vehicleNumber,
       status: "ACTIVE"
     });
 
     // Use environment variable for domain in production
     const domain = process.env.FRONTEND_URL || "http://localhost:5173";
-    const link = `${domain}/track?token=${token}`;
+    const driverLink = `${domain}/track?token=${token}&role=driver`;
+    const passengerLink = `${domain}/track?token=${token}&role=passenger`;
 
-    await sendWhatsAppMessage(mobile, link);
+    // 1. Send Message to Driver (Contains Client Info)
+    if (driverMobile) {
+      // Logic: Driver receives Client's Name and Mobile
+      await sendWhatsAppMessage(
+        driverMobile,
+        process.env.WHATSAPP_DRIVER_TEMPLATE || "grettings",
+        [`Client: ${name}, Mob: ${mobile}`, driverLink]
+      );
+    }
 
-    res.json({ success: true, user, link });
+    // 2. Send Message to Client (Contains Driver & Vehicle Info)
+    await sendWhatsAppMessage(
+      mobile,
+      process.env.WHATSAPP_PASSENGER_TEMPLATE || "grettings",
+      [`Driver: ${driverName}, Vehicle: ${vehicleNumber}`, passengerLink]
+    );
+
+    res.json({ success: true, user, link: passengerLink });
   } catch (error) {
     console.error("Error creating tracking:", error);
     res.status(500).json({ success: false, error: error.message });
@@ -81,8 +108,8 @@ exports.saveLocation = async (data, io) => {
   // In a real 50k scenario, we might only save every 2nd or 3rd coordinate
   locationBuffer.push({ token, lat, lng });
 
-  // 3. Emit to Admin panel immediately
-  io.to("ADMIN").emit("location-update", {
+  // 3. Emit to Admin panel and specific trip room immediately
+  io.to("ADMIN").to(token).emit("location-update", {
     ...data,
     lastSeen: updateBuffer[token].lastSeen
   });

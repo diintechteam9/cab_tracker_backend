@@ -4,6 +4,7 @@ const { saveLocation } = require("./controllers/admin.controller");
 module.exports = (io) => {
   io.on("connection", (socket) => {
     socket.on("join-admin", () => socket.join("ADMIN"));
+    socket.on("join-track", (token) => socket.join(token));
 
     socket.on("send-location", async (data) => {
       // Try Kafka first for scalability
