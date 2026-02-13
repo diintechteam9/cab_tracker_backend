@@ -1,7 +1,7 @@
 const axios = require("axios");
 
-const PHONE_NUMBER_ID = "790783224112773";
-const ACCESS_TOKEN = "EAAPQNJxvtoUBPNypMjlWt2ShbI29bhUN9J9yPKbu0ZBPiXdBdKlv8PeOzYa0iKne1YR27G0VJjlZBkDQIZA7ZBQEZCZC4nfEqENFv9fyQkB0ZCs2EdkeZCaoJLoxzl3MbEVukk2y7UQgt3Tl7psZBWZBsSKRrPZCIxO4ZAQCPDvwxZBnYe2CbUDaStcW212O9xbZBmzooVtAZDZD"; // env me rakhna best hai
+const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
+const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 
 const sendWhatsAppMessage = async (mobile, link) => {
   try {
