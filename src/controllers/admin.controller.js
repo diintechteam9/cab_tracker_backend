@@ -33,22 +33,42 @@ exports.createTracking = async (req, res) => {
     const driverLink = `${domain}/track?token=${token}&role=driver`;
     const passengerLink = `${domain}/track?token=${token}&role=passenger`;
 
-    // 1. Send Message to Driver (Contains Client Info)
+    // 1. Send Message to Driver (Template: journey_details_driver - 4 Variables)
+    // {{1}}=DriverName, {{2}}=ClientName, {{3}}=ClientMobile, {{4}}=Link
     if (driverMobile) {
-      // Logic: Driver receives Client's Name and Mobile
+      console.log(`[DEBUG] Attempting to send Driver MSG to: ${driverMobile}`);
+      console.log(`[DEBUG] Driver Params:`, [driverName, name, mobile, driverLink]);
+
       await sendWhatsAppMessage(
         driverMobile,
-        process.env.WHATSAPP_DRIVER_TEMPLATE || "grettings",
-        [`Client: ${name}, Mob: ${mobile}`, driverLink]
-      );
+        process.env.WHATSAPP_DRIVER_TEMPLATE || "journey_details_driver",
+        [
+          driverName || "Driver",
+          name || "Client",
+          mobile || "N/A",
+          driverLink
+        ]
+      ).catch(err => console.error(`[ERROR] Driver Msg Failed:`, err.message));
+    } else {
+      console.warn("[WARN] No driverMobile provided, skipping driver message.");
     }
 
-    // 2. Send Message to Client (Contains Driver & Vehicle Info)
+    // 2. Send Message to Client (Template: journey_status - 5 Variables)
+    // {{1}}=ClientName, {{2}}=DriverName, {{3}}=Vehicle, {{4}}=DriverMobile, {{5}}=Link
+    console.log(`[DEBUG] Attempting to send Passenger MSG to: ${mobile}`);
+    console.log(`[DEBUG] Passenger Params:`, [name, driverName, vehicleNumber, driverMobile, passengerLink]);
+
     await sendWhatsAppMessage(
       mobile,
-      process.env.WHATSAPP_PASSENGER_TEMPLATE || "grettings",
-      [`Driver: ${driverName}, Vehicle: ${vehicleNumber}`, passengerLink]
-    );
+      process.env.WHATSAPP_PASSENGER_TEMPLATE || "journey_status",
+      [
+        name || "Valued Customer",
+        driverName || "Your Driver",
+        vehicleNumber || "Allocated Vehicle",
+        driverMobile || "N/A",
+        passengerLink
+      ]
+    ).catch(err => console.error(`[ERROR] Passenger Msg Failed:`, err.message));
 
     res.json({ success: true, user, link: passengerLink });
   } catch (error) {

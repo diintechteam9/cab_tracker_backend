@@ -44,10 +44,15 @@ const sendWhatsAppMessage = async (mobile, templateName, parameters = []) => {
     console.log("✅ WhatsApp message sent successfully");
     console.log(response.data);
   } catch (error) {
-    console.error(
-      "❌ WhatsApp error:",
-      JSON.stringify(error.response?.data || error.message, null, 2)
-    );
+    const errorResponse = error.response?.data || error.message;
+    console.error("❌ WhatsApp error:", JSON.stringify(errorResponse, null, 2));
+
+    // Specific handling for Expired Token (Code 190)
+    if (errorResponse?.error?.code === 190) {
+      console.error("\n🚨 ALERT: Your WhatsApp Access Token has EXPIRED!");
+      console.error("👉 Please follow the steps in 'WHATSAPP_TOKEN_GUIDE.md' to generate a PERMANENT token.");
+      console.error("   Then update 'WHATSAPP_ACCESS_TOKEN' in your .env file.\n");
+    }
   }
 };
 
