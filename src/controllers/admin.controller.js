@@ -25,7 +25,11 @@ exports.createTracking = async (req, res) => {
       driverName,
       driverMobile,
       vehicleNumber,
-      status: "ACTIVE"
+      driverName,
+      driverMobile,
+      vehicleNumber,
+      status: "PENDING",
+      otp: Math.floor(1000 + Math.random() * 9000).toString()
     });
 
     // Use environment variable for domain in production
@@ -150,13 +154,63 @@ exports.getHistory = async (req, res) => {
 
 exports.completeTrip = async (req, res) => {
   try {
+    const { lat, lng } = req.body;
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { status: "COMPLETED" },
+      {
+        status: "COMPLETED",
+        endTime: new Date(),
+        endLocation: { lat, lng }
+      },
       { new: true }
     );
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(user.token).emit("ride-completed", { success: true });
+    }
+
     res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+exports.verifyOTP = async (req, res) => {
+  try {
+    const { token, otp, lat, lng } = req.body;
+    const user = await User.findOne({ token });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Trip not found" });
+    }
+
+    if (user.otp !== otp) {
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    user.status = "STARTED";
+    user.startTime = new Date();
+    user.startLocation = { lat, lng };
+    await user.save();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(token).emit("ride-started", { success: true });
+    }
+
+    res.json({ success: true, message: "Ride Started", user });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+exports.getTripDetails = async (req, res) => {
+  try {
+    const user = await User.findOne({ token: req.params.token });
+    if (!user) return res.status(404).json({ error: "Trip not found" });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };

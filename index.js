@@ -9,6 +9,7 @@ const { initKafka, startConsumer } = require("./src/services/kafka.service");
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
+app.set("io", io);
 
 const startServer = async () => {
   try {
